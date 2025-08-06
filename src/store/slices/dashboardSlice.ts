@@ -26,9 +26,14 @@ const initialState: DashboardState = {
 };
 
 export const fetchDashboardStats = createAsyncThunk(
-  'dashboard/fetchStats',
-  async (_, { getState }) => {
+  'dashboard/fetchDashboardStats',
+  async () => {
     try {
+      const now = new Date();
+      const currentMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      const previousMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+      const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+
       // Get current user info
       const { data: { user } } = await supabase.auth.getUser();
       const userRole = user?.user_metadata?.role || 'student';
@@ -94,57 +99,67 @@ export const fetchDashboardStats = createAsyncThunk(
 
                 // Calculate real percentage changes based on actual data
         const calculatePercentageChange = (current: number, previous: number): string => {
+          if (previous === 0 && current === 0) {
+            // If there was no data last month and no data this month, show 0%
+            return '+0.0%';
+          }
           if (previous === 0) {
             // If there was no data last month, show as new growth
-            return current > 0 ? '+100.0%' : '';
+            return current > 0 ? '+100.0%' : '+0.0%';
           }
-          if (current === 0) return '';
+          if (current === 0) {
+            // If there's no data this month but there was last month, show as decrease
+            return '-100.0%';
+          }
           const change = ((current - previous) / previous) * 100;
           return change >= 0 ? `+${change.toFixed(1)}%` : `${change.toFixed(1)}%`;
         };
 
         // Get current month and previous month data for percentage calculations
-        const currentMonth = new Date();
-        currentMonth.setDate(1); // Start of current month
-        const previousMonth = new Date(currentMonth);
-        previousMonth.setMonth(previousMonth.getMonth() - 1); // Start of previous month
-        
-        // Calculate student changes - compare total counts by month
         const { data: studentData } = await supabase
           .from('profiles')
           .select('created_at')
           .eq('role', 'student');
         
-        const currentMonthStudents = studentData?.filter(s => 
-          new Date(s.created_at) >= currentMonth
-        ).length || 0;
-        const previousMonthStudents = studentData?.filter(s => 
-          new Date(s.created_at) >= previousMonth && new Date(s.created_at) < currentMonth
-        ).length || 0;
+        const currentMonthStudents = studentData?.filter(s => {
+          const createdDate = new Date(s.created_at);
+          return createdDate >= currentMonthStart && createdDate < nextMonthStart;
+        }).length || 0;
+        
+        const previousMonthStudents = studentData?.filter(s => {
+          const createdDate = new Date(s.created_at);
+          return createdDate >= previousMonthStart && createdDate < currentMonthStart;
+        }).length || 0;
         
         // Calculate club changes
         const { data: clubData } = await supabase
           .from('clubs')
           .select('created_at');
         
-        const currentMonthClubs = clubData?.filter(c => 
-          new Date(c.created_at) >= currentMonth
-        ).length || 0;
-        const previousMonthClubs = clubData?.filter(c => 
-          new Date(c.created_at) >= previousMonth && new Date(c.created_at) < currentMonth
-        ).length || 0;
+        const currentMonthClubs = clubData?.filter(c => {
+          const createdDate = new Date(c.created_at);
+          return createdDate >= currentMonthStart && createdDate < nextMonthStart;
+        }).length || 0;
+        
+        const previousMonthClubs = clubData?.filter(c => {
+          const createdDate = new Date(c.created_at);
+          return createdDate >= previousMonthStart && createdDate < currentMonthStart;
+        }).length || 0;
         
         // Calculate order changes
         const { data: orderData } = await supabase
           .from('canteen_orders')
           .select('created_at');
         
-        const currentMonthOrders = orderData?.filter(o => 
-          new Date(o.created_at) >= currentMonth
-        ).length || 0;
-        const previousMonthOrders = orderData?.filter(o => 
-          new Date(o.created_at) >= previousMonth && new Date(o.created_at) < currentMonth
-        ).length || 0;
+        const currentMonthOrders = orderData?.filter(o => {
+          const createdDate = new Date(o.created_at);
+          return createdDate >= currentMonthStart && createdDate < nextMonthStart;
+        }).length || 0;
+        
+        const previousMonthOrders = orderData?.filter(o => {
+          const createdDate = new Date(o.created_at);
+          return createdDate >= previousMonthStart && createdDate < currentMonthStart;
+        }).length || 0;
         
         // Calculate marketplace changes
         const { data: marketplaceData } = await supabase
@@ -152,12 +167,15 @@ export const fetchDashboardStats = createAsyncThunk(
           .select('created_at')
           .eq('is_available', true);
         
-        const currentMonthMarketplace = marketplaceData?.filter(m => 
-          new Date(m.created_at) >= currentMonth
-        ).length || 0;
-        const previousMonthMarketplace = marketplaceData?.filter(m => 
-          new Date(m.created_at) >= previousMonth && new Date(m.created_at) < currentMonth
-        ).length || 0;
+        const currentMonthMarketplace = marketplaceData?.filter(m => {
+          const createdDate = new Date(m.created_at);
+          return createdDate >= currentMonthStart && createdDate < nextMonthStart;
+        }).length || 0;
+        
+        const previousMonthMarketplace = marketplaceData?.filter(m => {
+          const createdDate = new Date(m.created_at);
+          return createdDate >= previousMonthStart && createdDate < currentMonthStart;
+        }).length || 0;
 
         const result = {
           totalStudents: studentCount || 0,

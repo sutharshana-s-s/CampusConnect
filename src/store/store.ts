@@ -12,13 +12,20 @@ import activitySlice from './slices/activitySlice';
 import eventsSlice from './slices/eventsSlice';
 import dashboardSlice from './slices/dashboardSlice';
 
-const persistConfig = {
-  key: 'root',
+const authPersistConfig = {
+  key: 'auth',
   storage,
-  whitelist: ['auth'], // only auth will be persisted
+  whitelist: ['user', 'isAuthenticated'],
 };
 
-const persistedAuthReducer = persistReducer(persistConfig, authSlice);
+const settingsPersistConfig = {
+  key: 'settings',
+  storage,
+  whitelist: ['theme', 'displayName', 'email'],
+};
+
+const persistedAuthReducer = persistReducer(authPersistConfig, authSlice);
+const persistedSettingsReducer = persistReducer(settingsPersistConfig, settingsSlice);
 
 export const store = configureStore({
   reducer: {
@@ -28,7 +35,7 @@ export const store = configureStore({
     canteen: canteenSlice,
     marketplace: marketplaceSlice,
     messages: messagesSlice,
-    settings: settingsSlice,
+    settings: persistedSettingsReducer,
     activity: activitySlice,
     events: eventsSlice,
     dashboard: dashboardSlice,

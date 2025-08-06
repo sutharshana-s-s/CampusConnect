@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import styled from 'styled-components';
-import { ArrowLeft, Calendar, Clock, MapPin, Users, PlusCircle } from 'lucide-react';
+import { ArrowLeft, PlusCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { toast } from 'react-hot-toast';
-import type { RootState, AppDispatch } from '../store/store';
+import toast from 'react-hot-toast';
+import type { RootState } from '../store/store';
 
 const Container = styled.div`
   max-width: 800px;
@@ -126,22 +126,6 @@ const FormTextarea = styled.textarea`
   }
 `;
 
-const FormSelect = styled.select`
-  padding: 0.875rem 1rem;
-  border: 1px solid ${props => props.theme.colors.border};
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  transition: all 0.2s ease;
-  background-color: ${props => props.theme.colors.surface};
-  color: ${props => props.theme.colors.text};
-  
-  &:focus {
-    outline: none;
-    border-color: ${props => props.theme.colors.primary};
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
-`;
-
 const SubmitButton = styled.button`
   display: flex;
   align-items: center;
@@ -209,7 +193,6 @@ interface LocationState {
 const CreateEvent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const { clubs } = useSelector((state: RootState) => state.clubs);
   
@@ -256,7 +239,7 @@ const CreateEvent: React.FC = () => {
     setLoading(true);
     
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('club_events')
         .insert({
           club_id: clubId,
@@ -273,6 +256,7 @@ const CreateEvent: React.FC = () => {
         toast.error('Failed to create event');
       } else {
         toast.success('Event created successfully!');
+        
         navigate('/club-management');
       }
     } catch (error) {

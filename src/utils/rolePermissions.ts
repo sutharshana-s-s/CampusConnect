@@ -161,7 +161,6 @@ export const getNavigationItems = (userRole: UserRole) => {
   const baseItems = [
     { name: 'Dashboard', path: ROUTES.DASHBOARD, icon: 'LayoutDashboard' },
     { name: 'Messages', path: ROUTES.MESSAGES, icon: 'MessageSquare' },
-    { name: 'Settings', path: ROUTES.SETTINGS, icon: 'Settings' },
   ];
 
   const roleSpecificItems = {

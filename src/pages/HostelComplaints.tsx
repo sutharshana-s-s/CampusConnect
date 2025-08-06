@@ -1,16 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { AlertTriangle, Clock, CheckCircle, XCircle, Users, Building, Filter, Search } from 'lucide-react';
+import { AlertTriangle, Users } from 'lucide-react';
 import { fetchAllComplaints, updateComplaintStatus } from '../store/slices/hostelSlice';
 import toast from 'react-hot-toast';
 import type { RootState, AppDispatch } from '../store/store';
-import type { Database } from '../lib/supabase';
 import styled, { keyframes } from 'styled-components';
-
-type HostelComplaint = Database['public']['Tables']['hostel_complaints']['Row'] & {
-  user_name?: string;
-  room_number?: string;
-};
 
 const spin = keyframes`
   0% { transform: rotate(0deg); }
@@ -375,26 +369,6 @@ const EmptyText = styled.p`
   color: #64748b;
 `;
 
-const SearchIcon = styled(Search)`
-  width: 1.25rem;
-  height: 1.25rem;
-`;
-
-const FilterIcon = styled(Filter)`
-  width: 1.25rem;
-  height: 1.25rem;
-`;
-
-const BuildingIcon = styled(Building)`
-  width: 1.5rem;
-  height: 1.5rem;
-`;
-
-const UsersIcon = styled(Users)`
-  width: 1.5rem;
-  height: 1.5rem;
-`;
-
 const HostelComplaints: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { complaints, loading } = useSelector((state: RootState) => state.hostel);
@@ -416,19 +390,6 @@ const HostelComplaints: React.FC = () => {
       toast.success('Complaint status updated successfully!');
     } catch (error) {
       toast.error('Failed to update complaint status');
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'open':
-        return <Clock />;
-      case 'in_progress':
-        return <AlertTriangle />;
-      case 'resolved':
-        return <CheckCircle />;
-      default:
-        return <XCircle />;
     }
   };
 
@@ -501,7 +462,7 @@ const HostelComplaints: React.FC = () => {
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
             <CardIcon>
-              <UsersIcon />
+              <Users />
             </CardIcon>
           </CardHeader>
           <CardContent>

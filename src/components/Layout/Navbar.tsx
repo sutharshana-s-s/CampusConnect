@@ -121,20 +121,32 @@ const RightSection = styled.div`
   }
 `;
 
-const UserInfo = styled.div`
+const UserInfo = styled(Link)`
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 0.75rem;
   border-radius: 0.5rem;
   background-color: ${props => props.theme.isDark ? '#334155' : '#f8fafc'};
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.15s ease;
   
   @media (max-width: 640px) {
     display: none;
   }
+  
+  &:hover {
+    background-color: ${props => props.theme.isDark ? '#475569' : '#e2e8f0'};
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
 `;
 
-const MobileUserButton = styled.button`
+const MobileUserButton = styled(Link)`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -146,6 +158,7 @@ const MobileUserButton = styled.button`
   cursor: pointer;
   transition: all 0.15s ease;
   flex-shrink: 0;
+  text-decoration: none;
   
   @media (min-width: 641px) {
     display: none;
@@ -272,7 +285,7 @@ const Navbar: React.FC<NavbarProps> = ({
       <RightSection>
         <ThemeToggle />
         
-        <UserInfo>
+        <UserInfo to="/settings">
           <UserAvatar>
             {user?.full_name?.charAt(0) || 'U'}
           </UserAvatar>
@@ -282,7 +295,7 @@ const Navbar: React.FC<NavbarProps> = ({
           </UserDetails>
         </UserInfo>
         
-        <MobileUserButton>
+        <MobileUserButton to="/settings">
           <User size={20} />
         </MobileUserButton>
         
