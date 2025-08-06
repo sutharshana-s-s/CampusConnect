@@ -232,5 +232,11 @@ export const canAccessFeature = (userRole: UserRole, feature: string): boolean =
     'system_settings': ['super_admin'],
   };
 
+  // Special case for club_management: students who are secretaries can also access
+  if (feature === 'club_management' && userRole === 'student') {
+    // This will be checked in the component level since we need club membership data
+    return true; // Allow access, but component will filter based on actual membership
+  }
+
   return featurePermissions[feature]?.includes(userRole) || false;
 }; 

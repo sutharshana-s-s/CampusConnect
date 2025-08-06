@@ -89,17 +89,32 @@ export const fetchClubMembers = createAsyncThunk(
   async (clubId: string) => {
     const { data, error } = await supabase
       .from('club_members')
-      .select(`
-        *,
-        profiles:profiles!club_members_user_id_fkey(*)
-      `)
+      .select('*')
       .eq('club_id', clubId)
       .eq('status', 'approved');
 
     if (error) throw error;
+
+    // Fetch profiles separately and merge
+    const userIds = data.map(member => member.user_id);
+    let profiles: any = {};
+    
+    if (userIds.length > 0) {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, role')
+        .in('id', userIds);
+
+      if (!profileError && profileData) {
+        profileData.forEach((profile: any) => {
+          profiles[profile.id] = profile;
+        });
+      }
+    }
+
     return data.map((row) => ({
       ...row,
-      profile: row.profiles,
+      profile: profiles[row.user_id] || null,
     })) as ClubMemberWithProfile[];
   }
 );
@@ -110,17 +125,32 @@ export const fetchMembershipRequests = createAsyncThunk(
   async (clubId: string) => {
     const { data, error } = await supabase
       .from('club_members')
-      .select(`
-        *,
-        profiles:profiles!club_members_user_id_fkey(*)
-      `)
+      .select('*')
       .eq('club_id', clubId)
       .eq('status', 'pending');
 
     if (error) throw error;
+
+    // Fetch profiles separately and merge
+    const userIds = data.map(member => member.user_id);
+    let profiles: any = {};
+    
+    if (userIds.length > 0) {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, role')
+        .in('id', userIds);
+
+      if (!profileError && profileData) {
+        profileData.forEach((profile: any) => {
+          profiles[profile.id] = profile;
+        });
+      }
+    }
+
     return data.map((row) => ({
       ...row,
-      profile: row.profiles,
+      profile: profiles[row.user_id] || null,
     })) as ClubMemberWithProfile[];
   }
 );
@@ -144,14 +174,21 @@ export const updateMembershipStatus = createAsyncThunk(
       .from('club_members')
       .update(updateData)
       .eq('id', requestId)
-      .select(`*, profiles!user_id(*)`)
+      .select('*')
       .single();
 
     if (error) throw error;
 
+    // Fetch the user profile separately
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, role')
+      .eq('id', data.user_id)
+      .single();
+
     return {
       ...data,
-      profile: data?.profiles,
+      profile: profileError ? null : profile,
     } as ClubMemberWithProfile;
   }
 );
@@ -168,14 +205,21 @@ export const joinClub = createAsyncThunk(
         status: 'pending',
         position: 'member',
       })
-      .select(`*, profiles!user_id(*)`)
+      .select('*')
       .single();
 
     if (error) throw error;
 
+    // Fetch the user profile separately
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, role')
+      .eq('id', userId)
+      .single();
+
     return {
       ...data,
-      profile: data?.profiles,
+      profile: profileError ? null : profile,
     } as ClubMemberWithProfile;
   }
 );
@@ -192,6 +236,36 @@ export const leaveClub = createAsyncThunk(
 
     if (error) throw error;
     return { clubId, userId };
+  }
+);
+
+export const updateClubDetails = createAsyncThunk(
+  'clubs/updateClubDetails',
+  async ({ 
+    clubId, 
+    name, 
+    description, 
+    category 
+  }: { 
+    clubId: string; 
+    name: string; 
+    description: string; 
+    category: string; 
+  }) => {
+    const { data, error } = await supabase
+      .from('clubs')
+      .update({
+        name,
+        description,
+        category,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', clubId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   }
 );
 
@@ -273,6 +347,24 @@ const clubSlice = createSlice({
 
       .addCase(fetchUserClubMemberships.fulfilled, (state, action: PayloadAction<ClubMember[]>) => {
         state.userClubMemberships = action.payload;
+      })
+
+      .addCase(updateClubDetails.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateClubDetails.fulfilled, (state, action: PayloadAction<Club>) => {
+        state.loading = false;
+        // Update the club in the clubs array
+        const index = state.clubs.findIndex(club => club.id === action.payload.id);
+        if (index !== -1) {
+          state.clubs[index] = action.payload;
+        }
+        state.error = null;
+      })
+      .addCase(updateClubDetails.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to update club details';
       })
 
   },

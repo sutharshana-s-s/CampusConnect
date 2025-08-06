@@ -90,6 +90,10 @@ const MainContent = styled.div`
     padding: 1rem;
   }
   
+  @media (min-width: 768px) {
+    padding: 1.25rem;
+  }
+  
   @media (min-width: 1024px) {
     padding: 1.5rem;
   }

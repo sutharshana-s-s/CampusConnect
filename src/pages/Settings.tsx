@@ -9,6 +9,7 @@ import {
   setPushNotifications,
   updateProfile,
 } from '../store/slices/settingsSlice';
+import { updateUserProfile } from '../store/slices/authSlice';
 import styled from 'styled-components';
 
 const SettingsContainer = styled.div`
@@ -222,7 +223,7 @@ const PaletteIcon = styled(Palette)`
 const Settings: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const settings = useSelector((state: RootState) => state.settings);
-  const { user } = useSelector((state: RootState) => state.auth);
+  const { user, loading } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     if (user) {
@@ -231,11 +232,33 @@ const Settings: React.FC = () => {
         email: user.email || '' 
       }));
     }
-  }, [dispatch, user]);
+  }, [dispatch, user?.full_name, user?.email]);
 
-  const handleSaveChanges = () => {
-    // In a real application, you would make API calls here to update the user's settings
-    toast.success('Settings saved successfully!');
+  const handleSaveChanges = async () => {
+    if (!user) {
+      toast.error('User not found');
+      return;
+    }
+
+    // Check if values have actually changed
+    const hasChanges = settings.displayName !== user.full_name || settings.email !== user.email;
+    
+    if (!hasChanges) {
+      toast.success('No changes to save');
+      return;
+    }
+
+    try {
+      await dispatch(updateUserProfile({
+        fullName: settings.displayName,
+        email: settings.email,
+      })).unwrap();
+      
+      toast.success('Profile updated successfully!');
+    } catch (error) {
+      console.error('Profile update error:', error);
+      toast.error('Failed to update profile');
+    }
   };
 
   return (
@@ -340,9 +363,15 @@ const Settings: React.FC = () => {
         </Section>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2rem' }}>
-          <SaveButton onClick={handleSaveChanges}>
+          <SaveButton 
+            onClick={(e) => {
+              console.log('Button clicked!', e);
+              handleSaveChanges();
+            }} 
+            disabled={loading}
+          >
             <SaveIcon />
-            Save Changes
+            {loading ? 'Saving...' : 'Save Changes'}
           </SaveButton>
         </div>
       </SettingsCard>

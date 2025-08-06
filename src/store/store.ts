@@ -8,6 +8,9 @@ import canteenSlice from './slices/canteenSlice';
 import marketplaceSlice from './slices/marketplaceSlice';
 import messagesSlice from './slices/messagesSlice';
 import settingsSlice from './slices/settingsSlice';
+import activitySlice from './slices/activitySlice';
+import eventsSlice from './slices/eventsSlice';
+import dashboardSlice from './slices/dashboardSlice';
 
 const persistConfig = {
   key: 'root',
@@ -26,6 +29,9 @@ export const store = configureStore({
     marketplace: marketplaceSlice,
     messages: messagesSlice,
     settings: settingsSlice,
+    activity: activitySlice,
+    events: eventsSlice,
+    dashboard: dashboardSlice,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
