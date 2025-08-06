@@ -1,15 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
-import { Save, User, Bell, Palette } from 'lucide-react';
+import { Save, User, Palette, Lock, Eye, EyeOff } from 'lucide-react';
 import type { RootState, AppDispatch } from '../store/store';
 import {
   setTheme,
-  setEmailNotifications,
-  setPushNotifications,
   updateProfile,
 } from '../store/slices/settingsSlice';
 import { updateUserProfile } from '../store/slices/authSlice';
+import { supabase } from '../lib/supabase';
 import styled from 'styled-components';
 
 const SettingsContainer = styled.div`
@@ -46,12 +45,6 @@ const SettingsCard = styled.div`
   }
 `;
 
-const CardTitle = styled.h3`
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: ${props => props.theme.colors.text};
-  margin: 0 0 1rem 0;
-`;
 
 const Section = styled.section`
   margin-bottom: 2rem;
@@ -137,37 +130,7 @@ const FormSelect = styled.select`
   }
 `;
 
-const CheckboxGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-`;
 
-const CheckboxItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const CheckboxContainer = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-`;
-
-const Checkbox = styled.input`
-  width: 1rem;
-  height: 1rem;
-  accent-color: #3b82f6;
-`;
-
-const CheckboxLabel = styled.label`
-  font-size: 0.875rem;
-  color: ${props => props.theme.colors.text};
-  cursor: pointer;
-  flex: 1;
-`;
 
 const SaveButton = styled.button`
   background: linear-gradient(135deg, #3b82f6, #2563eb);
@@ -210,20 +173,147 @@ const UserIcon = styled(User)`
   height: 1.25rem;
 `;
 
-const BellIcon = styled(Bell)`
+const PaletteIcon = styled(Palette)`
   width: 1.25rem;
   height: 1.25rem;
 `;
 
-const PaletteIcon = styled(Palette)`
+const LockIcon = styled(Lock)`
   width: 1.25rem;
   height: 1.25rem;
+`;
+
+const EyeIcon = styled(Eye)`
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+  color: ${props => props.theme.colors.textSecondary};
+`;
+
+const EyeOffIcon = styled(EyeOff)`
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+  color: ${props => props.theme.colors.textSecondary};
+`;
+
+const ThemeDescription = styled.div`
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: ${props => props.theme.colors.textSecondary};
+`;
+
+const PasswordInputContainer = styled.div`
+  position: relative;
+`;
+
+const PasswordToggleButton = styled.button`
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s ease;
+  
+  &:hover {
+    background-color: ${props => props.theme.isDark ? '#334155' : '#f1f5f9'};
+  }
+`;
+
+const ChangePasswordButton = styled.button`
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
+const PasswordFormButtons = styled.div`
+  display: flex;
+  gap: 0.75rem;
+`;
+
+const SubmitPasswordButton = styled.button<{ $disabled: boolean }>`
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: ${props => props.$disabled ? 'not-allowed' : 'pointer'};
+  font-size: 0.875rem;
+  font-weight: 500;
+  opacity: ${props => props.$disabled ? 0.5 : 1};
+  transition: all 0.2s ease;
+  
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-1px);
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+`;
+
+const CancelButton = styled.button`
+  background: none;
+  color: ${props => props.theme.colors.textSecondary};
+  padding: 0.75rem 1.5rem;
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background-color: ${props => props.theme.isDark ? '#334155' : '#f8fafc'};
+    border-color: ${props => props.theme.colors.textSecondary};
+  }
+`;
+
+const SaveButtonContainer = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2rem;
 `;
 
 const Settings: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const settings = useSelector((state: RootState) => state.settings);
   const { user, loading } = useSelector((state: RootState) => state.auth);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -261,10 +351,51 @@ const Settings: React.FC = () => {
     }
   };
 
+  const handleChangePassword = async () => {
+    if (!user) {
+      toast.error('User not found');
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters long');
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success('Password changed successfully!');
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      setShowPasswordForm(false);
+    } catch (error) {
+      console.error('Password change error:', error);
+      toast.error('Failed to change password');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   return (
     <SettingsContainer>
       <SettingsHeader>
-        <SettingsTitle>Settings</SettingsTitle>
+        <SettingsTitle>Profile Settings</SettingsTitle>
       </SettingsHeader>
       
       <SettingsCard>
@@ -304,42 +435,6 @@ const Settings: React.FC = () => {
           </FormGroup>
         </Section>
 
-        {/* Notification Settings Section */}
-        <Section>
-          <SectionHeader>
-            <SectionIcon>
-              <BellIcon />
-            </SectionIcon>
-            <SectionTitle>Notification Settings</SectionTitle>
-          </SectionHeader>
-          
-          <CheckboxGroup>
-            <CheckboxItem>
-              <Checkbox
-                type="checkbox"
-                id="emailNotifications"
-                checked={settings.emailNotifications}
-                onChange={(e) => dispatch(setEmailNotifications(e.target.checked))}
-              />
-              <CheckboxLabel htmlFor="emailNotifications">
-                Email Notifications
-              </CheckboxLabel>
-            </CheckboxItem>
-            
-            <CheckboxItem>
-              <Checkbox
-                type="checkbox"
-                id="pushNotifications"
-                checked={settings.pushNotifications}
-                onChange={(e) => dispatch(setPushNotifications(e.target.checked))}
-              />
-              <CheckboxLabel htmlFor="pushNotifications">
-                Push Notifications
-              </CheckboxLabel>
-            </CheckboxItem>
-          </CheckboxGroup>
-        </Section>
-
         {/* Theme Settings Section */}
         <Section>
           <SectionHeader>
@@ -353,16 +448,102 @@ const Settings: React.FC = () => {
             <FormLabel>Theme</FormLabel>
             <FormSelect
               value={settings.theme}
-              onChange={(e) => dispatch(setTheme(e.target.value as 'light' | 'dark' | 'system'))}
+              onChange={(e) => {
+                const newTheme = e.target.value as 'light' | 'dark' | 'system';
+                dispatch(setTheme(newTheme));
+                toast.success(`Theme changed to ${newTheme}`);
+              }}
             >
               <option value="light">Light</option>
               <option value="dark">Dark</option>
-              <option value="system">System</option>
+              <option value="system">System (Follow OS)</option>
             </FormSelect>
+            <ThemeDescription>
+              {settings.theme === 'system' 
+                ? 'Theme will automatically follow your system preference'
+                : `Currently using ${settings.theme} theme`
+              }
+            </ThemeDescription>
           </FormGroup>
         </Section>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2rem' }}>
+        {/* Password Change Section */}
+        <Section>
+          <SectionHeader>
+            <SectionIcon>
+              <LockIcon />
+            </SectionIcon>
+            <SectionTitle>Change Password</SectionTitle>
+          </SectionHeader>
+          
+          {!showPasswordForm ? (
+            <FormGroup>
+              <ChangePasswordButton
+                onClick={() => setShowPasswordForm(true)}
+              >
+                <Lock size={16} />
+                Change Password
+              </ChangePasswordButton>
+            </FormGroup>
+          ) : (
+            <>
+              <FormGroup>
+                <FormLabel>New Password</FormLabel>
+                <PasswordInputContainer>
+                  <FormInput
+                    type={showNewPassword ? "text" : "password"}
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                    placeholder="Enter new password"
+                  />
+                  <PasswordToggleButton onClick={() => setShowNewPassword(!showNewPassword)}>
+                    {showNewPassword ? <EyeOffIcon /> : <EyeIcon />}
+                  </PasswordToggleButton>
+                </PasswordInputContainer>
+              </FormGroup>
+              
+              <FormGroup>
+                <FormLabel>Confirm New Password</FormLabel>
+                <PasswordInputContainer>
+                  <FormInput
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    placeholder="Confirm new password"
+                  />
+                  <PasswordToggleButton onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                    {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
+                  </PasswordToggleButton>
+                </PasswordInputContainer>
+              </FormGroup>
+              
+              <FormGroup>
+                <PasswordFormButtons>
+                  <SubmitPasswordButton
+                    onClick={handleChangePassword}
+                    $disabled={passwordLoading || !passwordData.newPassword || !passwordData.confirmPassword}
+                  >
+                    {passwordLoading ? 'Changing...' : 'Change Password'}
+                  </SubmitPasswordButton>
+                  <CancelButton
+                    onClick={() => {
+                      setShowPasswordForm(false);
+                      setPasswordData({
+                        currentPassword: '',
+                        newPassword: '',
+                        confirmPassword: '',
+                      });
+                    }}
+                  >
+                    Cancel
+                  </CancelButton>
+                </PasswordFormButtons>
+              </FormGroup>
+            </>
+          )}
+        </Section>
+
+        <SaveButtonContainer>
           <SaveButton 
             onClick={(e) => {
               console.log('Button clicked!', e);
@@ -373,7 +554,7 @@ const Settings: React.FC = () => {
             <SaveIcon />
             {loading ? 'Saving...' : 'Save Changes'}
           </SaveButton>
-        </div>
+        </SaveButtonContainer>
       </SettingsCard>
     </SettingsContainer>
   );

@@ -238,7 +238,7 @@ const SidebarFooter = styled.div<{ $isHovered: boolean }>`
   }
 `;
 
-const UserSection = styled.div<{ $isHovered: boolean }>`
+const UserSection = styled(Link)<{ $isHovered: boolean }>`
   display: flex;
   align-items: center;
   gap: ${props => props.$isHovered ? '0.75rem' : '0'};
@@ -247,11 +247,22 @@ const UserSection = styled.div<{ $isHovered: boolean }>`
   border-radius: 0.5rem;
   justify-content: center; /* Always center the avatar */
   transition: gap 0.15s ease; /* Faster transition */
+  text-decoration: none;
+  color: inherit;
   
   @media (max-width: 768px) {
     justify-content: flex-start; /* Left align on mobile */
     gap: 0.75rem; /* Always show gap on mobile */
     padding: 0.75rem; /* Always show padding on mobile */
+  }
+  
+  &:hover {
+    background-color: ${props => props.theme.isDark ? '#475569' : '#e2e8f0'};
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(0);
   }
 `;
 
@@ -390,7 +401,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </SidebarContent>
 
         <SidebarFooter $isHovered={isHovered}>
-          <UserSection $isHovered={isHovered}>
+          <UserSection to="/settings" $isHovered={isHovered}>
             <UserAvatar $isHovered={isHovered}>{user?.full_name?.charAt(0)}</UserAvatar>
             <UserInfo $isHovered={isHovered}>
               <UserName>{user?.full_name}</UserName>

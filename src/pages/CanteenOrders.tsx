@@ -537,6 +537,7 @@ const CanteenOrders: React.FC = () => {
             : order
         )
       );
+
     } catch (error) {
       console.error('Error updating order status:', error);
     }

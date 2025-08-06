@@ -1,18 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { PlusCircle, Users, CheckCircle, XCircle, Settings, UserCheck, Calendar } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Users, CheckCircle, XCircle, PlusCircle } from 'lucide-react';
+import { fetchClubs, fetchClubMembers, fetchMembershipRequests, updateMembershipStatus, leaveClub, updateClubDetails, fetchUserClubMemberships } from '../store/slices/clubSlice';
 import toast from 'react-hot-toast';
-import { useSearchParams, useNavigate } from 'react-router-dom';
 import type { RootState, AppDispatch } from '../store/store';
-import {
-    fetchClubs,
-    fetchClubMembers,
-    fetchMembershipRequests,
-    updateMembershipStatus,
-    leaveClub,
-    fetchUserClubMemberships,
-    updateClubDetails
-} from '../store/slices/clubSlice';
 import styled, { keyframes } from 'styled-components';
 
 const spin = keyframes`
@@ -130,11 +122,6 @@ const CreateEventButton = styled.button`
     outline: none;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
   }
-`;
-
-const ButtonIcon = styled(PlusCircle)`
-  width: 1.25rem;
-  height: 1.25rem;
 `;
 
 const ClubSelectorContainer = styled.div`
@@ -548,6 +535,7 @@ const ClubManagement: React.FC = () => {
             const position = isValidRole(role) ? role : undefined;
             await dispatch(updateMembershipStatus({ requestId, status: 'approved', position })).unwrap();
             toast.success('Member approved and role assigned!');
+            
         } catch {
             toast.error('Failed to approve member');
         }
@@ -557,6 +545,7 @@ const ClubManagement: React.FC = () => {
         try {
             await dispatch(updateMembershipStatus({ requestId, status: 'rejected' })).unwrap();
             toast.success('Request rejected successfully!');
+            
         } catch {
             toast.error('Failed to reject request');
         }
@@ -640,7 +629,7 @@ const ClubManagement: React.FC = () => {
                 <CreateEventButton
                     onClick={() => navigate('/create-event', { state: { clubId: selectedClub } })}
                 >
-                    <ButtonIcon />
+                    <PlusCircle />
                     <span>Create Event</span>
                 </CreateEventButton>
             </Header>

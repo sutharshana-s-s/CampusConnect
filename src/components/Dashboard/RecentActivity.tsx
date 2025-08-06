@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
-import { Users, AlertCircle, ShoppingCart, MessageSquare, Clock } from 'lucide-react';
+import { Users, AlertCircle, ShoppingCart, MessageSquare, Clock, ChevronRight } from 'lucide-react';
 import styled from 'styled-components';
 import { fetchUserActivities } from '../../store/slices/activitySlice';
 import type { RootState, AppDispatch } from '../../store/store';
 
 interface ActivityItem {
   id: string;
-  type: 'club' | 'hostel' | 'canteen' | 'marketplace' | 'message';
+  type: 'club_joined' | 'complaint_submitted' | 'order_placed' | 'item_sold' | 'message_received';
   title: string;
   description: string;
-  timestamp: Date;
+  timestamp: string; // ISO string from the store
   status?: 'pending' | 'approved' | 'completed' | 'urgent';
+  related_id?: string;
 }
 
 const ActivityContainer = styled.div`
@@ -57,16 +59,13 @@ const ActivityItem = styled.div`
   gap: 0.75rem;
   padding: 0.75rem;
   border-radius: 0.5rem;
-  transition: background-color 0.3s;
   background-color: ${props => props.theme.isDark ? '#334155' : '#f9fafb'};
+  cursor: pointer;
+  border: 1px solid transparent;
   
   @media (min-width: 480px) {
     gap: 1rem;
     padding: 1rem;
-  }
-  
-  &:hover {
-    background-color: ${props => props.theme.isDark ? '#475569' : '#f3f4f6'};
   }
 `;
 
@@ -159,11 +158,6 @@ const ViewAllButton = styled.button`
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s ease;
-  
-  &:hover {
-    background-color: #2563eb;
-  }
   
   &:focus {
     outline: none;
@@ -171,34 +165,12 @@ const ViewAllButton = styled.button`
   }
 `;
 
-const UsersIcon = styled(Users)`
-  width: 1.25rem;
-  height: 1.25rem;
-  color: #3b82f6;
-`;
-
-const AlertCircleIcon = styled(AlertCircle)`
-  width: 1.25rem;
-  height: 1.25rem;
-  color: #f59e0b;
-`;
-
-const ShoppingCartIcon = styled(ShoppingCart)`
-  width: 1.25rem;
-  height: 1.25rem;
-  color: #10b981;
-`;
-
-const MessageSquareIcon = styled(MessageSquare)`
-  width: 1.25rem;
-  height: 1.25rem;
-  color: #8b5cf6;
-`;
-
-const ClockIcon = styled(Clock)`
+const ChevronRightIcon = styled(ChevronRight)`
   width: 1.25rem;
   height: 1.25rem;
   color: #6b7280;
+  margin-left: 0.5rem;
+  flex-shrink: 0;
 `;
 
 const EmptyStateContainer = styled.div`
@@ -236,6 +208,7 @@ const RecentActivity: React.FC = () => {
   const { activities, loading } = useSelector((state: RootState) => state.activity);
   const { user } = useSelector((state: RootState) => state.auth);
   const [showAll, setShowAll] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user?.id) {
@@ -255,6 +228,39 @@ const RecentActivity: React.FC = () => {
         return <MessageSquare />;
       default:
         return <Clock />;
+    }
+  };
+
+  const handleActivityClick = (activity: ActivityItem) => {
+    switch (activity.type) {
+      case 'club_joined':
+        // Navigate to the specific club page if we have the club ID
+        if (activity.related_id) {
+          navigate(`/view-club/${activity.related_id}`);
+        } else {
+          // Fallback to general clubs page
+          navigate('/clubs');
+        }
+        break;
+      case 'complaint_submitted':
+        // Navigate to hostel complaints page
+        navigate('/hostel-complaints');
+        break;
+      case 'order_placed':
+        // Navigate to order tracking page
+        navigate('/order-tracking');
+        break;
+      case 'item_sold':
+        // Navigate to marketplace page
+        navigate('/marketplace');
+        break;
+      case 'message_received':
+        // Navigate to messages page
+        navigate('/messages');
+        break;
+      default:
+        // No specific navigation for this type
+        break;
     }
   };
 
@@ -302,7 +308,7 @@ const RecentActivity: React.FC = () => {
           activities
             .slice(0, showAll ? activities.length : 3)
             .map((activity) => (
-              <ActivityItem key={activity.id}>
+              <ActivityItem key={activity.id} onClick={() => handleActivityClick(activity)}>
                 <ActivityIcon>
                   {getActivityIcon(activity.type)}
                 </ActivityIcon>
@@ -321,9 +327,10 @@ const RecentActivity: React.FC = () => {
                   <ActivityDescription>{activity.description}</ActivityDescription>
                   <ActivityTime>
                     <TimeIcon />
-                    {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
+                    {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
                   </ActivityTime>
                 </ActivityContent>
+                <ChevronRightIcon className="chevron-icon" />
               </ActivityItem>
             ))
         )}

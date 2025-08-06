@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { Users, Building, UtensilsCrossed, ShoppingBag, TrendingUp, Calendar, Bell, PlusCircle } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
+import { Users, Building, UtensilsCrossed, ShoppingBag, TrendingUp, Calendar, PlusCircle } from 'lucide-react';
 import DashboardStats from '../components/Dashboard/DashboardStats';
 import RecentActivity from '../components/Dashboard/RecentActivity';
 import { fetchUpcomingEvents } from '../store/slices/eventsSlice';
@@ -138,31 +137,6 @@ const ActionDescription = styled.p`
   line-height: 1.5;
 `;
 
-const ActionLink = styled.div`
-  display: flex;
-  align-items: center;
-  color: #3b82f6;
-  font-weight: 500;
-  font-size: 0.875rem;
-  
-  ${ActionCard}:hover & {
-    color: #2563eb;
-  }
-`;
-
-const LinkText = styled.span``;
-
-const LinkIcon = styled(TrendingUp)`
-  width: 1rem;
-  height: 1rem;
-  margin-left: 0.5rem;
-  transition: transform 0.3s ease;
-  
-  ${ActionCard}:hover & {
-    transform: translateX(4px);
-  }
-`;
-
 const ContentGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr;
@@ -273,55 +247,6 @@ const EventDetails = styled.p`
   margin: 0;
 `;
 
-const NotificationList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
-  max-height: 300px;
-`;
-
-const NotificationItem = styled.div`
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 1rem;
-  background-color: ${props => props.theme.isDark ? '#334155' : '#f8fafc'};
-  border-radius: 0.5rem;
-`;
-
-const NotificationIcon = styled.div`
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #10b981, #059669);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  flex-shrink: 0;
-`;
-
-const NotificationInfo = styled.div`
-  flex: 1;
-  min-width: 0;
-`;
-
-const NotificationTitle = styled.h4`
-  font-weight: 600;
-  color: ${props => props.theme.colors.text};
-  margin: 0 0 0.25rem 0;
-`;
-
-const NotificationDetails = styled.p`
-  color: ${props => props.theme.colors.textSecondary};
-  font-size: 0.875rem;
-  margin: 0;
-  line-height: 1.5;
-`;
-
 const RightColumnContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -408,11 +333,6 @@ const CalendarIcon = styled(Calendar)`
   height: 1.25rem;
 `;
 
-const BellIcon = styled(Bell)`
-  width: 1.25rem;
-  height: 1.25rem;
-`;
-
 const CreateEventButton = styled.button`
   display: flex;
   align-items: center;
@@ -437,8 +357,7 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
-  const { events, loading: eventsLoading } = useSelector((state: RootState) => state.events);
-  const { isDark } = useTheme();
+  const { events, loading } = useSelector((state: RootState) => state.events);
   const [showAllEvents, setShowAllEvents] = useState(false);
 
   useEffect(() => {
@@ -566,7 +485,7 @@ const Dashboard: React.FC = () => {
         <MainContent>
           <RecentActivity />
         </MainContent>
-        
+
         <RightColumnContainer>
           <Card $expandable={true} $expanded={showAllEvents}>
             <CardHeader>
@@ -581,9 +500,9 @@ const Dashboard: React.FC = () => {
                 </CreateEventButton>
               )}
             </CardHeader>
-            
+
             <EventList $showAll={showAllEvents}>
-              {eventsLoading ? (
+              {loading ? (
                 <EmptyStateContainer>
                   <div style={{ textAlign: 'center', color: '#64748b' }}>
                     Loading events...
@@ -603,7 +522,7 @@ const Dashboard: React.FC = () => {
                 <>
                   {events
                     .slice(0, showAllEvents ? events.length : 3)
-                    .map((event) => (
+                    .map((event: { id: string; title: string; date: string; time?: string; location?: string; organizer?: string; type?: string }) => (
                       <EventItem key={event.id}>
                         <EventIcon>
                           {event.type === 'club_event' ? (
@@ -623,7 +542,7 @@ const Dashboard: React.FC = () => {
                       </EventItem>
                     ))
                   }
-                  
+
                   {events.length > 3 && (
                     <ViewMoreButton onClick={() => setShowAllEvents(!showAllEvents)}>
                       {showAllEvents ? 'Show Less' : `View all ${events.length} events (${events.length - 3} more)`}
@@ -632,39 +551,6 @@ const Dashboard: React.FC = () => {
                 </>
               )}
             </EventList>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Notifications</CardTitle>
-              <CardIcon>
-                <BellIcon />
-              </CardIcon>
-            </CardHeader>
-            
-            <NotificationList>
-              <NotificationItem>
-                <NotificationIcon />
-                <NotificationInfo>
-                  <NotificationTitle>New club event posted</NotificationTitle>
-                  <NotificationDetails>Photography Club</NotificationDetails>
-                </NotificationInfo>
-              </NotificationItem>
-              <NotificationItem>
-                <NotificationIcon />
-                <NotificationInfo>
-                  <NotificationTitle>Order ready for pickup</NotificationTitle>
-                  <NotificationDetails>Canteen Order #1234</NotificationDetails>
-                </NotificationInfo>
-              </NotificationItem>
-              <NotificationItem>
-                <NotificationIcon />
-                <NotificationInfo>
-                  <NotificationTitle>Maintenance scheduled</NotificationTitle>
-                  <NotificationDetails>Block A - This weekend</NotificationDetails>
-                </NotificationInfo>
-              </NotificationItem>
-            </NotificationList>
           </Card>
         </RightColumnContainer>
       </ContentGrid>

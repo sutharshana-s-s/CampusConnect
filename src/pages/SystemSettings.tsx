@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Database, Shield, Bell, Globe, Save } from 'lucide-react';
+import { Settings, Database, Shield, Globe, Save } from 'lucide-react';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
 
@@ -187,11 +187,6 @@ const SystemSettings: React.FC = () => {
     sessionTimeout: 30,
     requireTwoFactor: false,
     
-    // Notification Settings
-    emailNotifications: true,
-    pushNotifications: true,
-    notificationFrequency: 'immediate',
-    
     // Database Settings
     backupFrequency: 'daily',
     retentionPeriod: 90,
@@ -308,46 +303,6 @@ const SystemSettings: React.FC = () => {
               <Switch $checked={settings.requireTwoFactor} />
               <span>Require Two-Factor Authentication</span>
             </ToggleSwitch>
-          </FormGroup>
-        </SettingsCard>
-
-        {/* Notification Settings */}
-        <SettingsCard>
-          <CardHeader>
-            <CardIcon>
-              <Bell size={20} />
-            </CardIcon>
-            <div>
-              <CardTitle>Notification Settings</CardTitle>
-              <CardDescription>Configure notification preferences</CardDescription>
-            </div>
-          </CardHeader>
-
-          <FormGroup>
-            <ToggleSwitch>
-              <Switch $checked={settings.emailNotifications} />
-              <span>Email Notifications</span>
-            </ToggleSwitch>
-          </FormGroup>
-
-          <FormGroup>
-            <ToggleSwitch>
-              <Switch $checked={settings.pushNotifications} />
-              <span>Push Notifications</span>
-            </ToggleSwitch>
-          </FormGroup>
-
-          <FormGroup>
-            <FormLabel>Notification Frequency</FormLabel>
-            <FormSelect
-              value={settings.notificationFrequency}
-              onChange={(e) => handleSettingChange('notificationFrequency', e.target.value)}
-            >
-              <option value="immediate">Immediate</option>
-              <option value="hourly">Hourly</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-            </FormSelect>
           </FormGroup>
         </SettingsCard>
 
