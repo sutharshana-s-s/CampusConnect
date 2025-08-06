@@ -410,19 +410,34 @@ const CanteenOrders: React.FC = () => {
 
   const fetchOrders = async () => {
     try {
+      // Fetch all orders for any canteen vendor to see
       const { data, error } = await supabase
         .from('canteen_orders')
-        .select(`
-          *,
-          profiles!canteen_orders_user_id_fkey (
-            full_name,
-            email,
-            phone
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+
+      // Fetch customer profiles for all orders
+      const userIds = data?.map(order => order.user_id) || [];
+      let customerProfiles: any = {};
+      
+      if (userIds.length > 0) {
+        // Fetch all profiles at once using IN clause
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, phone')
+          .in('id', userIds);
+
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+        } else {
+          // Create a map of user_id to profile
+          profiles?.forEach((profile: any) => {
+            customerProfiles[profile.id] = profile;
+          });
+        }
+      }
 
       // Fetch canteen items to get item names
       const { data: menuItems, error: menuError } = await supabase
@@ -441,15 +456,20 @@ const CanteenOrders: React.FC = () => {
         });
       }
 
-      // Add item names to orders
-      const ordersWithItemNames = data?.map(order => ({
-        ...order,
-        items: order.items.map((item: OrderItem) => ({
-          ...item,
-          name: itemMap.get(item.item_id)?.name || getFallbackItemName(item.item_id),
-          menu_price: itemMap.get(item.item_id)?.price || item.price
-        }))
-      })) || [];
+      // Add item names and customer profiles to orders
+      const ordersWithItemNames = data?.map(order => {
+        const customerProfile = customerProfiles[order.user_id];
+        
+        return {
+          ...order,
+          profiles: customerProfile || null,
+          items: order.items.map((item: OrderItem) => ({
+            ...item,
+            name: itemMap.get(item.item_id)?.name || getFallbackItemName(item.item_id),
+            menu_price: itemMap.get(item.item_id)?.price || item.price
+          }))
+        };
+      }) || [];
 
       setOrders(ordersWithItemNames);
     } catch (error) {
@@ -488,6 +508,8 @@ const CanteenOrders: React.FC = () => {
   const filteredOrders = filter === 'all' 
     ? orders.filter((order: Order) => !['delivered', 'cancelled'].includes(order.status))
     : orders.filter((order: Order) => order.status === filter);
+
+
 
   const stats = {
     total: orders.filter((o: Order) => !['delivered', 'cancelled'].includes(o.status)).length,
@@ -688,138 +710,163 @@ const CanteenOrders: React.FC = () => {
         </ManagementButtons>
       )}
 
-      <OrdersGrid>
-        {filteredOrders.map((order) => (
-          <OrderCard key={order.id}>
-            <OrderHeader>
-              <OrderInfo>
-                <OrderNumber>Order #{order.id.slice(0, 8)}</OrderNumber>
-                <OrderTime>
-                  <Clock size={14} />
-                  {formatTime(order.created_at)}
-                </OrderTime>
-              </OrderInfo>
-                              <OrderStatus $status={order.status}>
-                {order.status.toUpperCase()}
-              </OrderStatus>
-            </OrderHeader>
+      {filteredOrders.length === 0 ? (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '3rem', 
+          backgroundColor: '#f9fafb', 
+          borderRadius: '0.75rem',
+          border: '1px solid #e5e7eb'
+        }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+            No orders found
+          </div>
+          <div style={{ color: '#6b7280', marginBottom: '1rem' }}>
+            {filter === 'all' 
+              ? 'No active orders in the system at the moment.'
+              : `No ${filter} orders found.`
+            }
+          </div>
+          <div style={{ fontSize: '0.875rem', color: '#9ca3af' }}>
+            Debug info: User ID: {user?.id}, Role: {user?.role}, Total orders: {orders.length}
+          </div>
+        </div>
+      ) : (
+        <OrdersGrid>
+          {filteredOrders.map((order) => (
+            <OrderCard key={order.id}>
+              <OrderHeader>
+                <OrderInfo>
+                  <OrderNumber>Order #{order.id.slice(0, 8)}</OrderNumber>
+                  <OrderTime>
+                    <Clock size={14} />
+                    {formatTime(order.created_at)}
+                  </OrderTime>
+                </OrderInfo>
+                                <OrderStatus $status={order.status}>
+                  {order.status.toUpperCase()}
+                </OrderStatus>
+              </OrderHeader>
 
-            <CustomerInfo>
+                          <CustomerInfo>
               <CustomerIcon>
                 <User size={16} />
               </CustomerIcon>
               <CustomerDetails>
-                <CustomerName>{order.profiles?.full_name || 'Unknown Customer'}</CustomerName>
+                <CustomerName>
+                  {order.profiles?.full_name || `Customer ${order.user_id.slice(0, 8)}`}
+                </CustomerName>
                 <CustomerContact>
                   <Mail size={12} style={{ display: 'inline', marginRight: '0.25rem' }} />
-                  {order.profiles?.email || 'No email'} • 
+                  {order.profiles?.email || 'Email not available'} • 
                   <Phone size={12} style={{ display: 'inline', marginRight: '0.25rem', marginLeft: '0.5rem' }} />
-                  {order.profiles?.phone || 'No phone'}
+                  {order.profiles?.phone || 'Phone not available'}
                 </CustomerContact>
               </CustomerDetails>
             </CustomerInfo>
 
-            <OrderItems>
-              <OrderItemsHeader>
-                <span>Item</span>
-                <span>Qty</span>
-                <span>Price</span>
-              </OrderItemsHeader>
-              {order.items.map((item, index) => (
-                <OrderItem key={index}>
-                  <ItemName>{(item as any).name || `Item #${item.item_id.slice(0, 8)}`}</ItemName>
-                  <ItemQuantity>{item.quantity}</ItemQuantity>
-                  <ItemPrice>${(item.price * item.quantity).toFixed(2)}</ItemPrice>
-                </OrderItem>
-              ))}
-            </OrderItems>
+              <OrderItems>
+                <OrderItemsHeader>
+                  <span>Item</span>
+                  <span>Qty</span>
+                  <span>Price</span>
+                </OrderItemsHeader>
+                {order.items.map((item, index) => (
+                  <OrderItem key={index}>
+                    <ItemName>{(item as any).name || `Item #${item.item_id.slice(0, 8)}`}</ItemName>
+                    <ItemQuantity>{item.quantity}</ItemQuantity>
+                    <ItemPrice>${(item.price * item.quantity).toFixed(2)}</ItemPrice>
+                  </OrderItem>
+                ))}
+              </OrderItems>
 
-            <OrderTotal>
-              <span>Total</span>
-              <span>${order.total_amount.toFixed(2)}</span>
-            </OrderTotal>
-            
-            {order.delivery_type === 'delivery' && order.delivery_address && (
-              <div style={{ 
-                marginTop: '0.5rem', 
-                padding: '0.5rem', 
-                backgroundColor: '#f3f4f6', 
-                borderRadius: '0.25rem',
-                fontSize: '0.875rem',
-                color: '#6b7280'
-              }}>
-                🚚 Delivery to: {order.delivery_address}
-              </div>
-            )}
+              <OrderTotal>
+                <span>Total</span>
+                <span>${order.total_amount.toFixed(2)}</span>
+              </OrderTotal>
+              
+              {order.delivery_type === 'delivery' && order.delivery_address && (
+                <div style={{ 
+                  marginTop: '0.5rem', 
+                  padding: '0.5rem', 
+                  backgroundColor: '#f3f4f6', 
+                  borderRadius: '0.25rem',
+                  fontSize: '0.875rem',
+                  color: '#6b7280'
+                }}>
+                  🚚 Delivery to: {order.delivery_address}
+                </div>
+              )}
 
-            <ActionButtons>
-              {order.status === 'pending' && (
-                <>
+              <ActionButtons>
+                {order.status === 'pending' && (
+                  <>
+                    <ActionButton 
+                      $variant="primary"
+                      onClick={() => handleStatusUpdate(order.id, 'confirmed')}
+                    >
+                      <CheckCircle size={14} />
+                      Accept Order
+                    </ActionButton>
+                    <ActionButton 
+                      $variant="danger"
+                      onClick={() => handleStatusUpdate(order.id, 'cancelled')}
+                    >
+                      <XCircle size={14} />
+                      Reject Order
+                    </ActionButton>
+                  </>
+                )}
+                {order.status === 'confirmed' && (
                   <ActionButton 
                     $variant="primary"
-                    onClick={() => handleStatusUpdate(order.id, 'confirmed')}
+                    onClick={() => handleStatusUpdate(order.id, 'preparing')}
+                  >
+                    <Package size={14} />
+                    Start Preparing
+                  </ActionButton>
+                )}
+                {order.status === 'preparing' && (
+                  <ActionButton 
+                    $variant="primary"
+                    onClick={() => handleStatusUpdate(order.id, 'ready')}
                   >
                     <CheckCircle size={14} />
-                    Accept Order
+                    Mark Ready
                   </ActionButton>
+                )}
+                {order.status === 'ready' && (
+                  <ActionButton 
+                    $variant="primary"
+                    onClick={() => handleStatusUpdate(order.id, 'delivered')}
+                  >
+                    <CheckCircle size={14} />
+                    Mark Delivered
+                  </ActionButton>
+                )}
+                {(order.status === 'delivered' || order.status === 'cancelled') && (
                   <ActionButton 
                     $variant="danger"
-                    onClick={() => handleStatusUpdate(order.id, 'cancelled')}
+                    onClick={() => handleDeleteOrder(order.id)}
                   >
                     <XCircle size={14} />
-                    Reject Order
+                    Delete Order
                   </ActionButton>
-                </>
-              )}
-              {order.status === 'confirmed' && (
-                <ActionButton 
-                  $variant="primary"
-                  onClick={() => handleStatusUpdate(order.id, 'preparing')}
-                >
-                  <Package size={14} />
-                  Start Preparing
-                </ActionButton>
-              )}
-              {order.status === 'preparing' && (
-                <ActionButton 
-                  $variant="primary"
-                  onClick={() => handleStatusUpdate(order.id, 'ready')}
-                >
-                  <CheckCircle size={14} />
-                  Mark Ready
-                </ActionButton>
-              )}
-              {order.status === 'ready' && (
-                <ActionButton 
-                  $variant="primary"
-                  onClick={() => handleStatusUpdate(order.id, 'delivered')}
-                >
-                  <CheckCircle size={14} />
-                  Mark Delivered
-                </ActionButton>
-              )}
-              {(order.status === 'delivered' || order.status === 'cancelled') && (
-                <ActionButton 
-                  $variant="danger"
-                  onClick={() => handleDeleteOrder(order.id)}
-                >
-                  <XCircle size={14} />
-                  Delete Order
-                </ActionButton>
-              )}
-              {order.status === 'cancelled' && (
-                <ActionButton 
-                  $variant="primary"
-                  onClick={() => handleStatusUpdate(order.id, 'pending')}
-                >
-                  <CheckCircle size={14} />
-                  Restore to Pending
-                </ActionButton>
-              )}
-            </ActionButtons>
-          </OrderCard>
-        ))}
-      </OrdersGrid>
+                )}
+                {order.status === 'cancelled' && (
+                  <ActionButton 
+                    $variant="primary"
+                    onClick={() => handleStatusUpdate(order.id, 'pending')}
+                  >
+                    <CheckCircle size={14} />
+                    Restore to Pending
+                  </ActionButton>
+                )}
+              </ActionButtons>
+            </OrderCard>
+          ))}
+        </OrdersGrid>
+      )}
     </Container>
   );
 };

@@ -1,11 +1,13 @@
-import React from 'react';
-import { useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
-import { Users, Building, UtensilsCrossed, ShoppingBag, TrendingUp, Calendar, Bell } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { Link, useNavigate } from 'react-router-dom';
+import { Users, Building, UtensilsCrossed, ShoppingBag, TrendingUp, Calendar, Bell, PlusCircle } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import DashboardStats from '../components/Dashboard/DashboardStats';
 import RecentActivity from '../components/Dashboard/RecentActivity';
-import type { RootState } from '../store/store';
+import { fetchUpcomingEvents } from '../store/slices/eventsSlice';
+import { fetchDashboardStats } from '../store/slices/dashboardSlice';
+import type { RootState, AppDispatch } from '../store/store';
 import styled from 'styled-components';
 
 const DashboardContainer = styled.div`
@@ -80,8 +82,16 @@ const QuickActionsGrid = styled.div`
   grid-template-columns: 1fr;
   gap: 1rem;
   
+  @media (min-width: 480px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
   @media (min-width: 640px) {
     grid-template-columns: repeat(2, 1fr);
+  }
+  
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(3, 1fr);
   }
   
   @media (min-width: 1024px) {
@@ -157,9 +167,23 @@ const ContentGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr;
   gap: 2rem;
+  min-height: 400px;
+  
+  @media (min-width: 768px) {
+    grid-template-columns: 1fr;
+    min-height: 500px;
+  }
   
   @media (min-width: 1024px) {
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    min-height: 400px;
+  }
+  
+  @media (min-width: 1280px) {
     grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+    min-height: 400px;
   }
 `;
 
@@ -169,12 +193,17 @@ const MainContent = styled.div`
   gap: 2rem;
 `;
 
-const Card = styled.div`
+const Card = styled.div<{ $expandable?: boolean; $expanded?: boolean }>`
   background-color: ${props => props.theme.colors.surface};
   border-radius: 1rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   padding: 1.5rem;
   border: 1px solid ${props => props.theme.colors.border};
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+  max-height: ${props => props.$expandable && props.$expanded ? 'none' : '500px'};
+  transition: max-height 0.3s ease;
 `;
 
 const CardHeader = styled.div`
@@ -197,10 +226,13 @@ const CardIcon = styled.div`
   align-items: center;
 `;
 
-const EventList = styled.div`
+const EventList = styled.div<{ $showAll: boolean }>`
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  flex: 1;
+  overflow-y: auto;
+  transition: max-height 0.3s ease;
 `;
 
 const EventItem = styled.div`
@@ -245,6 +277,10 @@ const NotificationList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  max-height: 300px;
 `;
 
 const NotificationItem = styled.div`
@@ -286,6 +322,61 @@ const NotificationDetails = styled.p`
   line-height: 1.5;
 `;
 
+const RightColumnContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+`;
+
+const EmptyStateContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+  flex: 1;
+`;
+
+const EmptyStateIcon = styled.div`
+  color: ${props => props.theme.colors.textSecondary};
+  margin-bottom: 1rem;
+`;
+
+const EmptyStateTitle = styled.h4`
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: ${props => props.theme.colors.text};
+  margin: 0 0 0.5rem 0;
+`;
+
+const EmptyStateDescription = styled.p`
+  font-size: 0.875rem;
+  color: ${props => props.theme.colors.textSecondary};
+  margin: 0;
+  line-height: 1.5;
+  max-width: 300px;
+`;
+
+const ViewMoreButton = styled.button`
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 0.5rem;
+  color: ${props => props.theme.colors.primary};
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 1rem;
+  
+  &:hover {
+    background-color: ${props => props.theme.colors.background};
+    border-color: ${props => props.theme.colors.primary};
+  }
+`;
+
 const UsersIcon = styled(Users)`
   width: 1.25rem;
   height: 1.25rem;
@@ -322,46 +413,122 @@ const BellIcon = styled(Bell)`
   height: 1.25rem;
 `;
 
+const CreateEventButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    transform: translateY(-1px);
+  }
+`;
+
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
+  const { events, loading: eventsLoading } = useSelector((state: RootState) => state.events);
   const { isDark } = useTheme();
+  const [showAllEvents, setShowAllEvents] = useState(false);
 
-  const quickActions = [
-    {
-      title: 'Join a Club',
-      description: 'Discover and join student organizations',
-      icon: <UsersIcon />,
-      color: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-      path: '/clubs'
-    },
-    {
-      title: 'Order Food',
-      description: 'Browse canteen menu and place orders',
-      icon: <UtensilsCrossedIcon />,
-      color: 'linear-gradient(135deg, #f59e0b, #d97706)',
-      path: '/canteen'
-    },
-    {
-      title: 'Hostel Services',
-      description: 'Manage your hostel accommodations',
-      icon: <BuildingIcon />,
-      color: 'linear-gradient(135deg, #10b981, #059669)',
-      path: '/hostel'
-    },
-    {
-      title: 'Marketplace',
-      description: 'Buy and sell items with other students',
-      icon: <ShoppingBagIcon />,
-      color: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-      path: '/marketplace'
+  useEffect(() => {
+    dispatch(fetchUpcomingEvents());
+    dispatch(fetchDashboardStats());
+  }, [dispatch]);
+
+  // Get role-specific quick actions
+  const getQuickActions = () => {
+    const allActions = [
+      {
+        title: 'Join a Club',
+        description: 'Discover and join student organizations',
+        icon: <UsersIcon />,
+        color: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+        path: '/clubs',
+        roles: ['student', 'super_admin']
+      },
+      {
+        title: 'Order Food',
+        description: 'Browse canteen menu and place orders',
+        icon: <UtensilsCrossedIcon />,
+        color: 'linear-gradient(135deg, #f59e0b, #d97706)',
+        path: '/canteen',
+        roles: ['student', 'super_admin']
+      },
+      {
+        title: 'Hostel Services',
+        description: 'Manage your hostel accommodations',
+        icon: <BuildingIcon />,
+        color: 'linear-gradient(135deg, #10b981, #059669)',
+        path: '/hostel',
+        roles: ['student', 'hostel_admin', 'super_admin']
+      },
+      {
+        title: 'Marketplace',
+        description: 'Buy and sell items with other students',
+        icon: <ShoppingBagIcon />,
+        color: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+        path: '/marketplace',
+        roles: ['student', 'super_admin']
+      },
+      {
+        title: 'Club Management',
+        description: 'Manage your club and members',
+        icon: <UsersIcon />,
+        color: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+        path: '/club-management',
+        roles: ['club_head', 'super_admin']
+      },
+      {
+        title: 'Canteen Orders',
+        description: 'View and manage canteen orders',
+        icon: <UtensilsCrossedIcon />,
+        color: 'linear-gradient(135deg, #f59e0b, #d97706)',
+        path: '/canteen-orders',
+        roles: ['canteen_vendor', 'super_admin']
+      },
+      {
+        title: 'Hostel Complaints',
+        description: 'Manage hostel complaints and issues',
+        icon: <BuildingIcon />,
+        color: 'linear-gradient(135deg, #10b981, #059669)',
+        path: '/hostel-complaints',
+        roles: ['hostel_admin', 'super_admin']
+      }
+    ];
+
+    return allActions.filter(action => action.roles.includes(user?.role || 'student'));
+  };
+
+  const quickActions = getQuickActions();
+
+  // Format event date for display
+  const formatEventDate = (dateString: string, timeString?: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = date.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return `Today${timeString ? `, ${timeString}` : ''}`;
+    } else if (diffDays === 1) {
+      return `Tomorrow${timeString ? `, ${timeString}` : ''}`;
+    } else if (diffDays < 7) {
+      return `${date.toLocaleDateString('en-US', { weekday: 'long' })}${timeString ? `, ${timeString}` : ''}`;
+    } else {
+      return `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}${timeString ? `, ${timeString}` : ''}`;
     }
-  ];
-
-  const upcomingEvents = [
-    { title: 'Photography Workshop', date: 'Tomorrow, 2:00 PM' },
-    { title: 'Basketball Tournament', date: 'Friday, 4:00 PM' },
-    { title: 'Coding Competition', date: 'Next Week, 10:00 AM' }
-  ];
+  };
 
   return (
     <DashboardContainer>
@@ -400,59 +567,106 @@ const Dashboard: React.FC = () => {
           <RecentActivity />
         </MainContent>
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Upcoming Events</CardTitle>
-            <CardIcon>
-              <CalendarIcon />
-            </CardIcon>
-          </CardHeader>
-          
-          <EventList>
-            {upcomingEvents.map((event, index) => (
-              <EventItem key={index}>
-                <EventIcon />
-                <EventInfo>
-                  <EventTitle>{event.title}</EventTitle>
-                  <EventDetails>{event.date}</EventDetails>
-                </EventInfo>
-              </EventItem>
-            ))}
-          </EventList>
-        </Card>
+        <RightColumnContainer>
+          <Card $expandable={true} $expanded={showAllEvents}>
+            <CardHeader>
+              <CardTitle>Upcoming Events</CardTitle>
+              <CardIcon>
+                <CalendarIcon />
+              </CardIcon>
+              {user?.role === 'super_admin' && (
+                <CreateEventButton onClick={() => navigate('/create-general-event')}>
+                  <PlusCircle size={16} />
+                  Create Event
+                </CreateEventButton>
+              )}
+            </CardHeader>
+            
+            <EventList $showAll={showAllEvents}>
+              {eventsLoading ? (
+                <EmptyStateContainer>
+                  <div style={{ textAlign: 'center', color: '#64748b' }}>
+                    Loading events...
+                  </div>
+                </EmptyStateContainer>
+              ) : events.length === 0 ? (
+                <EmptyStateContainer>
+                  <EmptyStateIcon>
+                    <Calendar size={48} />
+                  </EmptyStateIcon>
+                  <EmptyStateTitle>No Upcoming Events</EmptyStateTitle>
+                  <EmptyStateDescription>
+                    No events are scheduled at the moment. Check back later for new events!
+                  </EmptyStateDescription>
+                </EmptyStateContainer>
+              ) : (
+                <>
+                  {events
+                    .slice(0, showAllEvents ? events.length : 3)
+                    .map((event) => (
+                      <EventItem key={event.id}>
+                        <EventIcon>
+                          {event.type === 'club_event' ? (
+                            <Users size={16} />
+                          ) : (
+                            <Calendar size={16} />
+                          )}
+                        </EventIcon>
+                        <EventInfo>
+                          <EventTitle>{event.title}</EventTitle>
+                          <EventDetails>
+                            {formatEventDate(event.date, event.time)}
+                            {event.location && ` • ${event.location}`}
+                            {event.organizer && ` • ${event.organizer}`}
+                          </EventDetails>
+                        </EventInfo>
+                      </EventItem>
+                    ))
+                  }
+                  
+                  {events.length > 3 && (
+                    <ViewMoreButton onClick={() => setShowAllEvents(!showAllEvents)}>
+                      {showAllEvents ? 'Show Less' : `View all ${events.length} events (${events.length - 3} more)`}
+                    </ViewMoreButton>
+                  )}
+                </>
+              )}
+            </EventList>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Notifications</CardTitle>
-            <CardIcon>
-              <BellIcon />
-            </CardIcon>
-          </CardHeader>
-          
-          <NotificationList>
-            <NotificationItem>
-              <NotificationIcon />
-              <NotificationInfo>
-                <NotificationTitle>New club event posted</NotificationTitle>
-                <NotificationDetails>Photography Club</NotificationDetails>
-              </NotificationInfo>
-            </NotificationItem>
-            <NotificationItem>
-              <NotificationIcon />
-              <NotificationInfo>
-                <NotificationTitle>Order ready for pickup</NotificationTitle>
-                <NotificationDetails>Canteen Order #1234</NotificationDetails>
-              </NotificationInfo>
-            </NotificationItem>
-            <NotificationItem>
-              <NotificationIcon />
-              <NotificationInfo>
-                <NotificationTitle>Maintenance scheduled</NotificationTitle>
-                <NotificationDetails>Block A - This weekend</NotificationDetails>
-              </NotificationInfo>
-            </NotificationItem>
-          </NotificationList>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Notifications</CardTitle>
+              <CardIcon>
+                <BellIcon />
+              </CardIcon>
+            </CardHeader>
+            
+            <NotificationList>
+              <NotificationItem>
+                <NotificationIcon />
+                <NotificationInfo>
+                  <NotificationTitle>New club event posted</NotificationTitle>
+                  <NotificationDetails>Photography Club</NotificationDetails>
+                </NotificationInfo>
+              </NotificationItem>
+              <NotificationItem>
+                <NotificationIcon />
+                <NotificationInfo>
+                  <NotificationTitle>Order ready for pickup</NotificationTitle>
+                  <NotificationDetails>Canteen Order #1234</NotificationDetails>
+                </NotificationInfo>
+              </NotificationItem>
+              <NotificationItem>
+                <NotificationIcon />
+                <NotificationInfo>
+                  <NotificationTitle>Maintenance scheduled</NotificationTitle>
+                  <NotificationDetails>Block A - This weekend</NotificationDetails>
+                </NotificationInfo>
+              </NotificationItem>
+            </NotificationList>
+          </Card>
+        </RightColumnContainer>
       </ContentGrid>
     </DashboardContainer>
   );

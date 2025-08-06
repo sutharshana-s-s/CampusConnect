@@ -1,22 +1,28 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout/Layout';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import Clubs from './pages/Clubs';
 import ClubManagement from './pages/ClubManagement';
+import CreateEvent from './pages/CreateEvent';
+import CreateGeneralEvent from './pages/CreateGeneralEvent';
 import ViewClub from './pages/ViewClub';
 import Canteen from './pages/Canteen';
 import CanteenOrders from './pages/CanteenOrders';
 import CanteenManagement from './pages/CanteenManagement';
 import OrderTracking from './pages/OrderTracking';
 import Hostel from './pages/Hostel';
+import HostelComplaints from './pages/HostelComplaints';
 import Marketplace from './pages/Marketplace';
 import Messages from './pages/Messages';
 import Settings from './pages/Settings';
+import UserManagement from './pages/UserManagement';
+import SystemSettings from './pages/SystemSettings';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
+import ToastContainer from './components/Toast/ToastContainer';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { checkSession } from './store/slices/authSlice';
 import type { RootState, AppDispatch } from './store/store';
@@ -49,8 +55,9 @@ const App: React.FC = () => {
 
   return (
     <ThemeProvider>
-      <Router>
-        <div className="App">
+      <ErrorBoundary>
+        <Router>
+          <div className="App">
           <Routes>
             <Route path="/auth" element={user ? <Navigate to="/dashboard" /> : <Auth />} />
             <Route path="/" element={<Navigate to={user ? "/dashboard" : "/auth"} />} />
@@ -68,6 +75,8 @@ const App: React.FC = () => {
                 
                 {/* Club Manager Routes */}
                 <Route path="club-management" element={<ProtectedRoute requiredFeature="club_management"><ClubManagement /></ProtectedRoute>} />
+                <Route path="create-event" element={<ProtectedRoute requiredFeature="club_management"><CreateEvent /></ProtectedRoute>} />
+                <Route path="create-general-event" element={<ProtectedRoute requiredFeature="user_management"><CreateGeneralEvent /></ProtectedRoute>} />
                 <Route path="view-club/:clubId" element={<ProtectedRoute><ViewClub /></ProtectedRoute>} />
                 
                 {/* Canteen Vendor Routes */}
@@ -75,28 +84,20 @@ const App: React.FC = () => {
                 <Route path="canteen-management" element={<ProtectedRoute requiredFeature="canteen_management"><CanteenManagement /></ProtectedRoute>} />
                 
                 {/* Hostel Admin Routes */}
-                <Route path="hostel-complaints" element={<ProtectedRoute requiredFeature="hostel_complaints"><Hostel /></ProtectedRoute>} />
+                <Route path="hostel-complaints" element={<ProtectedRoute requiredFeature="hostel_complaints"><HostelComplaints /></ProtectedRoute>} />
                 
                 {/* Super Admin Routes */}
-                <Route path="user-management" element={<ProtectedRoute requiredFeature="user_management"><Settings /></ProtectedRoute>} />
-                <Route path="system-settings" element={<ProtectedRoute requiredFeature="system_settings"><Settings /></ProtectedRoute>} />
+                <Route path="user-management" element={<ProtectedRoute requiredFeature="user_management"><UserManagement /></ProtectedRoute>} />
+                <Route path="system-settings" element={<ProtectedRoute requiredFeature="system_settings"><SystemSettings /></ProtectedRoute>} />
               </Route>
             ) : (
               <Route path="*" element={<Navigate to="/auth" />} />
             )}
           </Routes>
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: '#363636',
-                color: '#fff',
-              },
-            }}
-          />
-        </div>
-      </Router>
+          <ToastContainer />
+                  </div>
+        </Router>
+      </ErrorBoundary>
     </ThemeProvider>
   );
 };

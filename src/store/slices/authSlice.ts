@@ -116,6 +116,30 @@ export const getCurrentUser = createAsyncThunk('auth/getCurrentUser', async () =
   return profile;
 });
 
+export const updateUserProfile = createAsyncThunk(
+  'auth/updateUserProfile',
+  async ({ fullName, email }: { fullName: string; email: string }) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) throw new Error('User not authenticated');
+    
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: fullName,
+        email: email,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', user.id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    return profile;
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -192,6 +216,18 @@ const authSlice = createSlice({
       .addCase(getCurrentUser.rejected, (state) => {
         state.loading = false;
         // Don't clear user state on rejection
+      })
+      .addCase(updateUserProfile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateUserProfile.fulfilled, (state, action: PayloadAction<Profile>) => {
+        state.loading = false;
+        state.user = action.payload;
+      })
+      .addCase(updateUserProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Profile update failed';
       });
   },
 });

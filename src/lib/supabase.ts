@@ -309,6 +309,37 @@ export type Database = {
         Update: Partial<Database['public']['Tables']['conversations']['Insert']>;
       };
 
+      events: {
+        Row: {
+          id: string;
+          title: string;
+          description?: string;
+          date: string;
+          time?: string;
+          location?: string;
+          organizer?: string;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['events']['Row'], 'id' | 'created_at'>;
+        Update: Partial<Database['public']['Tables']['events']['Insert']>;
+      };
+
+      club_events: {
+        Row: {
+          id: string;
+          club_id: string;
+          title: string;
+          description?: string;
+          date: string;
+          time?: string;
+          location?: string;
+          club_name?: string;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['club_events']['Row'], 'id' | 'created_at'>;
+        Update: Partial<Database['public']['Tables']['club_events']['Insert']>;
+      };
+
       messages: {
         Row: {
           id: string;

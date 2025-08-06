@@ -230,6 +230,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ onToggle }) => {
     { value: 'club_head', label: 'Club Head' },
     { value: 'canteen_vendor', label: 'Canteen Vendor' },
     { value: 'hostel_admin', label: 'Hostel Admin' },
+    { value: 'super_admin', label: 'Super Admin' },
   ];
 
   return (

@@ -20,11 +20,19 @@ const CardContainer = styled.div`
   background-color: ${props => props.theme.colors.surface};
   border-radius: 1rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  padding: 1.5rem;
+  padding: 1rem;
   height: 100%;
   display: flex;
   flex-direction: column;
   border: 1px solid ${props => props.theme.colors.border};
+  
+  @media (min-width: 480px) {
+    padding: 1.25rem;
+  }
+  
+  @media (min-width: 640px) {
+    padding: 1.5rem;
+  }
 `;
 
 const CardHeader = styled.div`
@@ -35,11 +43,15 @@ const CardHeader = styled.div`
 `;
 
 const CardTitle = styled.h3`
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 700;
   color: ${props => props.theme.colors.text};
   margin: 0;
   line-height: 1.4;
+  
+  @media (min-width: 480px) {
+    font-size: 1.25rem;
+  }
 `;
 
 const CategoryBadge = styled.span`
@@ -85,17 +97,23 @@ const ButtonContainer = styled.div`
 
 const Button = styled.button<{ variant: 'primary' | 'secondary' | 'success' | 'warning' | 'disabled' }>`
   flex: 1;
-  min-width: 120px;
-  padding: 0.75rem 1rem;
+  min-width: 100px;
+  padding: 0.625rem 0.75rem;
   border-radius: 0.5rem;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  
+  @media (min-width: 480px) {
+    min-width: 120px;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
   
   ${props => {
     switch (props.variant) {

@@ -9,7 +9,9 @@ import {
     fetchClubMembers,
     fetchMembershipRequests,
     updateMembershipStatus,
-    leaveClub
+    leaveClub,
+    fetchUserClubMemberships,
+    updateClubDetails
 } from '../store/slices/clubSlice';
 import styled, { keyframes } from 'styled-components';
 
@@ -55,12 +57,12 @@ const EmptyIcon = styled(Users)`
 const EmptyTitle = styled.h3`
   font-size: 1.125rem;
   font-weight: 600;
-  color: #1e293b;
+  color: ${props => props.theme.colors.text};
   margin-bottom: 0.5rem;
 `;
 
 const EmptyText = styled.p`
-  color: #64748b;
+  color: ${props => props.theme.colors.textSecondary};
 `;
 
 const Header = styled.div`
@@ -82,7 +84,7 @@ const HeaderContent = styled.div`
 const HeaderTitle = styled.h1`
   font-size: 2rem;
   font-weight: 700;
-  color: #1e293b;
+  color: ${props => props.theme.colors.text};
   margin: 0;
   line-height: 1.2;
   
@@ -183,7 +185,7 @@ const TabHeader = styled.div`
   border-bottom: 1px solid ${props => props.theme.colors.border};
 `;
 
-const TabButton = styled.button<{ isActive: boolean }>`
+const TabButton = styled.button<{ $isActive: boolean }>`
   flex: 1;
   padding: 1rem 1.5rem;
   text-align: center;
@@ -194,22 +196,30 @@ const TabButton = styled.button<{ isActive: boolean }>`
   cursor: pointer;
   transition: all 0.2s ease;
   
-  ${props => props.isActive ? `
-    color: #3b82f6;
-    border-bottom: 2px solid #3b82f6;
-    background-color: #f8fafc;
+  ${props => props.$isActive ? `
+    color: ${props.theme.colors.primary};
+    border-bottom: 2px solid ${props.theme.colors.primary};
+    background-color: ${props.theme.isDark ? '#1e293b' : '#f8fafc'};
   ` : `
-    color: #64748b;
+    color: ${props.theme.colors.textSecondary};
     
     &:hover {
-      color: #334155;
-      background-color: #f8fafc;
+      color: ${props.theme.colors.text};
+      background-color: ${props.theme.isDark ? '#1e293b' : '#f8fafc'};
     }
   `}
 `;
 
 const TabContent = styled.div`
-  padding: 1.5rem;
+  padding: 1rem;
+  
+  @media (min-width: 480px) {
+    padding: 1.25rem;
+  }
+  
+  @media (min-width: 640px) {
+    padding: 1.5rem;
+  }
 `;
 
 const MemberList = styled.div`
@@ -222,13 +232,17 @@ const MemberItem = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem;
-  background-color: #f8fafc;
+  padding: 0.75rem;
+  background-color: ${props => props.theme.isDark ? '#1e293b' : '#f8fafc'};
   border-radius: 0.5rem;
   transition: background-color 0.2s ease;
   
+  @media (min-width: 480px) {
+    padding: 1rem;
+  }
+  
   &:hover {
-    background-color: #f1f5f9;
+    background-color: ${props => props.theme.isDark ? '#334155' : '#f1f5f9'};
   }
 `;
 
@@ -236,13 +250,13 @@ const MemberInfo = styled.div``;
 
 const MemberName = styled.h4`
   font-weight: 600;
-  color: #1e293b;
+  color: ${props => props.theme.colors.text};
   margin: 0 0 0.25rem 0;
 `;
 
 const MemberDetails = styled.p`
   font-size: 0.875rem;
-  color: #64748b;
+  color: ${props => props.theme.colors.textSecondary};
   margin: 0;
 `;
 
@@ -269,9 +283,13 @@ const RequestItem = styled.div`
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding: 1rem;
-  background-color: #f8fafc;
+  padding: 0.75rem;
+  background-color: ${props => props.theme.isDark ? '#1e293b' : '#f8fafc'};
   border-radius: 0.5rem;
+  
+  @media (min-width: 480px) {
+    padding: 1rem;
+  }
   
   @media (min-width: 768px) {
     flex-direction: row;
@@ -286,27 +304,28 @@ const RequestInfo = styled.div`
 
 const RequestName = styled.h4`
   font-weight: 600;
-  color: #1e293b;
+  color: ${props => props.theme.colors.text};
   margin: 0 0 0.25rem 0;
 `;
 
 const RequestDetails = styled.p`
   font-size: 0.875rem;
-  color: #64748b;
+  color: ${props => props.theme.colors.textSecondary};
   margin: 0;
 `;
 
 const RoleSelect = styled.select`
-  border: 1px solid #e2e8f0;
+  border: 1px solid ${props => props.theme.colors.border};
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
-  background-color: white;
+  background-color: ${props => props.theme.colors.surface};
+  color: ${props => props.theme.colors.text};
   cursor: pointer;
   
   &:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: ${props => props.theme.colors.primary};
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
 `;
@@ -358,21 +377,22 @@ const FormGroup = styled.div`
 const FormLabel = styled.label`
   font-size: 0.875rem;
   font-weight: 500;
-  color: #374151;
+  color: ${props => props.theme.colors.text};
 `;
 
 const FormInput = styled.input`
   width: 100%;
   padding: 0.875rem 1rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid ${props => props.theme.colors.border};
   border-radius: 0.5rem;
   font-size: 0.875rem;
   transition: all 0.2s ease;
-  background-color: white;
+  background-color: ${props => props.theme.colors.surface};
+  color: ${props => props.theme.colors.text};
   
   &:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: ${props => props.theme.colors.primary};
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
 `;
@@ -380,18 +400,19 @@ const FormInput = styled.input`
 const FormTextarea = styled.textarea`
   width: 100%;
   padding: 0.875rem 1rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid ${props => props.theme.colors.border};
   border-radius: 0.5rem;
   font-size: 0.875rem;
   transition: all 0.2s ease;
-  background-color: white;
+  background-color: ${props => props.theme.colors.surface};
+  color: ${props => props.theme.colors.text};
   resize: vertical;
   min-height: 6rem;
   font-family: inherit;
   
   &:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: ${props => props.theme.colors.primary};
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
 `;
@@ -466,27 +487,35 @@ const ClubManagement: React.FC = () => {
     const passedClubName = searchParams.get('clubName') || '';
 
     const { user } = useSelector((state: RootState) => state.auth);
-    const { clubs, clubMembers, membershipRequests, loading } = useSelector((state: RootState) => state.clubs);
+    const { clubs, clubMembers, membershipRequests, userClubMemberships, loading } = useSelector((state: RootState) => state.clubs);
 
     const [activeTab, setActiveTab] = useState<'members' | 'requests' | 'settings'>('members');
     const [selectedClub, setSelectedClub] = useState<string>(passedClubId);
     const [assignRoles, setAssignRoles] = useState<{ [key: string]: string }>({});
+    const [clubSettings, setClubSettings] = useState({
+        name: '',
+        description: '',
+        category: 'Academic'
+    });
 
     const isClubHead = user?.role === 'club_head';
 
     const myClubs = isClubHead
         ? clubs
         : clubs.filter(club =>
-            clubMembers.some(
-                m => m.user_id === user?.id &&
-                    m.club_id === club.id &&
-                    m.position === 'secretary'
+            userClubMemberships.some(
+                m => m.club_id === club.id &&
+                    m.position === 'secretary' &&
+                    m.status === 'approved'
             )
         );
 
     useEffect(() => {
         dispatch(fetchClubs());
-    }, [dispatch]);
+        if (user?.id) {
+            dispatch(fetchUserClubMemberships(user.id));
+        }
+    }, [dispatch, user?.id]);
 
     useEffect(() => {
         if (passedClubId) setSelectedClub(passedClubId);
@@ -496,8 +525,18 @@ const ClubManagement: React.FC = () => {
         if (selectedClub) {
             dispatch(fetchClubMembers(selectedClub));
             dispatch(fetchMembershipRequests(selectedClub));
+            
+            // Load club settings
+            const selectedClubData = clubs.find(club => club.id === selectedClub);
+            if (selectedClubData) {
+                setClubSettings({
+                    name: selectedClubData.name,
+                    description: selectedClubData.description,
+                    category: selectedClubData.category
+                });
+            }
         }
-    }, [dispatch, selectedClub]);
+    }, [dispatch, selectedClub, clubs]);
 
     const validRoles = ['member', 'secretary', 'treasurer', 'event_manager'] as const;
     type Role = typeof validRoles[number];
@@ -533,6 +572,27 @@ const ClubManagement: React.FC = () => {
         }
     };
 
+    const handleSaveClubSettings = async () => {
+        if (!selectedClub) {
+            toast.error('No club selected');
+            return;
+        }
+
+        try {
+            await dispatch(updateClubDetails({
+                clubId: selectedClub,
+                name: clubSettings.name,
+                description: clubSettings.description,
+                category: clubSettings.category
+            })).unwrap();
+            
+            toast.success('Club settings updated successfully!');
+        } catch (error) {
+            console.error('Club settings update error:', error);
+            toast.error('Failed to update club settings');
+        }
+    };
+
     const roleOptions = ['member', 'secretary', 'treasurer', 'event_manager'];
 
     if (loading) {
@@ -549,6 +609,21 @@ const ClubManagement: React.FC = () => {
                 <EmptyIcon />
                 <EmptyTitle>No Clubs Found</EmptyTitle>
                 <EmptyText>You are not a club head or secretary of any clubs.</EmptyText>
+            </EmptyState>
+        );
+    }
+
+    // Check if user has access to any clubs (either as club head or secretary)
+    if (myClubs.length === 0) {
+        return (
+            <EmptyState>
+                <EmptyIcon />
+                <EmptyTitle>No Clubs Found</EmptyTitle>
+                <EmptyText>
+                    {user.role === 'club_head' 
+                        ? 'You are not a club head of any clubs.' 
+                        : 'You are not a secretary of any clubs.'}
+                </EmptyText>
             </EmptyState>
         );
     }
@@ -589,7 +664,7 @@ const ClubManagement: React.FC = () => {
                         {['members', 'requests', 'settings'].map(tab => (
                             <TabButton
                                 key={tab}
-                                isActive={activeTab === tab}
+                                $isActive={activeTab === tab}
                                 onClick={() => setActiveTab(tab as any)}
                             >
                                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -671,6 +746,11 @@ const ClubManagement: React.FC = () => {
                                     <FormLabel>Club Name</FormLabel>
                                     <FormInput
                                         type="text"
+                                        value={clubSettings.name}
+                                        onChange={(e) => setClubSettings(prev => ({
+                                            ...prev,
+                                            name: e.target.value
+                                        }))}
                                         placeholder="Enter club name"
                                     />
                                 </FormGroup>
@@ -678,12 +758,23 @@ const ClubManagement: React.FC = () => {
                                     <FormLabel>Description</FormLabel>
                                     <FormTextarea
                                         rows={4}
+                                        value={clubSettings.description}
+                                        onChange={(e) => setClubSettings(prev => ({
+                                            ...prev,
+                                            description: e.target.value
+                                        }))}
                                         placeholder="Enter club description"
                                     />
                                 </FormGroup>
                                 <FormGroup>
                                     <FormLabel>Category</FormLabel>
-                                    <FormSelect>
+                                    <FormSelect
+                                        value={clubSettings.category}
+                                        onChange={(e) => setClubSettings(prev => ({
+                                            ...prev,
+                                            category: e.target.value
+                                        }))}
+                                    >
                                         <option value="Academic">Academic</option>
                                         <option value="Sports">Sports</option>
                                         <option value="Cultural">Cultural</option>
@@ -692,8 +783,8 @@ const ClubManagement: React.FC = () => {
                                         <option value="Arts">Arts</option>
                                     </FormSelect>
                                 </FormGroup>
-                                <SaveButton>
-                                    Save Changes
+                                <SaveButton onClick={handleSaveClubSettings} disabled={loading}>
+                                    {loading ? 'Saving...' : 'Save Changes'}
                                 </SaveButton>
                             </SettingsForm>
                         )}

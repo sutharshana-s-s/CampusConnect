@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { formatDistanceToNow } from 'date-fns';
 import { Users, AlertCircle, ShoppingCart, MessageSquare, Clock } from 'lucide-react';
 import styled from 'styled-components';
+import { fetchUserActivities } from '../../store/slices/activitySlice';
+import type { RootState, AppDispatch } from '../../store/store';
 
 interface ActivityItem {
   id: string;
@@ -16,8 +19,20 @@ const ActivityContainer = styled.div`
   background-color: ${props => props.theme.colors.surface};
   border-radius: 0.75rem;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  padding: 1.5rem;
+  padding: 1rem;
   border: 1px solid ${props => props.theme.colors.border};
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+  max-height: 600px;
+  
+  @media (min-width: 480px) {
+    padding: 1.25rem;
+  }
+  
+  @media (min-width: 640px) {
+    padding: 1.5rem;
+  }
 `;
 
 const ActivityTitle = styled.h3`
@@ -31,16 +46,24 @@ const ActivityList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 `;
 
 const ActivityItem = styled.div`
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
-  padding: 1rem;
+  gap: 0.75rem;
+  padding: 0.75rem;
   border-radius: 0.5rem;
   transition: background-color 0.3s;
   background-color: ${props => props.theme.isDark ? '#334155' : '#f9fafb'};
+  
+  @media (min-width: 480px) {
+    gap: 1rem;
+    padding: 1rem;
+  }
   
   &:hover {
     background-color: ${props => props.theme.isDark ? '#475569' : '#f3f4f6'};
@@ -126,14 +149,25 @@ const TimeIcon = styled(Clock)`
 `;
 
 const ViewAllButton = styled.button`
+  width: 100%;
+  padding: 0.75rem 1rem;
   margin-top: 1.5rem;
-  text-align: center;
-  color: #2563eb;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
   
   &:hover {
-    color: #1d4ed8;
+    background-color: #2563eb;
+  }
+  
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
   }
 `;
 
@@ -167,100 +201,139 @@ const ClockIcon = styled(Clock)`
   color: #6b7280;
 `;
 
+const EmptyStateContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+  flex: 1;
+`;
+
+const EmptyStateIcon = styled.div`
+  color: ${props => props.theme.colors.textSecondary};
+  margin-bottom: 1rem;
+`;
+
+const EmptyStateTitle = styled.h4`
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: ${props => props.theme.colors.text};
+  margin: 0 0 0.5rem 0;
+`;
+
+const EmptyStateDescription = styled.p`
+  font-size: 0.875rem;
+  color: ${props => props.theme.colors.textSecondary};
+  margin: 0;
+  line-height: 1.5;
+  max-width: 300px;
+`;
+
 const RecentActivity: React.FC = () => {
-  const activities: ActivityItem[] = [
-    {
-      id: '1',
-      type: 'club',
-      title: 'Photography Club',
-      description: 'Your membership request has been approved',
-      timestamp: new Date(Date.now() - 30 * 60 * 1000),
-      status: 'approved',
-    },
-    {
-      id: '2',
-      type: 'canteen',
-      title: 'Order #1234',
-      description: 'Your lunch order is ready for pickup',
-      timestamp: new Date(Date.now() - 45 * 60 * 1000),
-      status: 'completed',
-    },
-    {
-      id: '3',
-      type: 'hostel',
-      title: 'Maintenance Request',
-      description: 'Plumbing issue in Room 302B - In Progress',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      status: 'pending',
-    },
-    {
-      id: '4',
-      type: 'marketplace',
-      title: 'New Message',
-      description: 'Someone is interested in your Chemistry textbook',
-      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000),
-      status: 'pending',
-    },
-    {
-      id: '5',
-      type: 'club',
-      title: 'Coding Club Event',
-      description: 'Hackathon registration closes tomorrow',
-      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000),
-      status: 'urgent',
-    },
-  ];
+  const dispatch = useDispatch<AppDispatch>();
+  const { activities, loading } = useSelector((state: RootState) => state.activity);
+  const { user } = useSelector((state: RootState) => state.auth);
+  const [showAll, setShowAll] = useState(false);
+
+  useEffect(() => {
+    if (user?.id) {
+      dispatch(fetchUserActivities(user.id));
+    }
+  }, [dispatch, user?.id]);
 
   const getActivityIcon = (type: string) => {
     switch (type) {
       case 'club_joined':
-        return <UsersIcon />;
+        return <Users />;
       case 'complaint_submitted':
-        return <AlertCircleIcon />;
+        return <AlertCircle />;
       case 'order_placed':
-        return <ShoppingCartIcon />;
+        return <ShoppingCart />;
       case 'item_sold':
-        return <MessageSquareIcon />;
+        return <MessageSquare />;
       default:
-        return <ClockIcon />;
+        return <Clock />;
     }
   };
 
+  if (loading) {
+    return (
+      <ActivityContainer>
+        <ActivityTitle>Recent Activity</ActivityTitle>
+        <EmptyStateContainer>
+          <div style={{ textAlign: 'center', color: '#64748b' }}>
+            Loading activities...
+          </div>
+        </EmptyStateContainer>
+      </ActivityContainer>
+    );
+  }
+
   return (
     <ActivityContainer>
-      <ActivityTitle>Recent Activity</ActivityTitle>
+      <ActivityTitle>
+        Recent Activity
+        {activities.length > 0 && (
+          <span style={{ 
+            fontSize: '0.875rem', 
+            fontWeight: 'normal', 
+            color: '#64748b',
+            marginLeft: '0.5rem'
+          }}>
+            ({activities.length})
+          </span>
+        )}
+      </ActivityTitle>
       
       <ActivityList>
-        {activities.map((activity) => (
-          <ActivityItem key={activity.id}>
-            <ActivityIcon>
-              {getActivityIcon(activity.type)}
-            </ActivityIcon>
-            
-            <ActivityContent>
-              <ActivityHeader>
-                <ActivityTitleText>
-                  {activity.title}
-                </ActivityTitleText>
-                {activity.status && (
-                  <StatusBadge $status={activity.status}>
-                    {activity.status}
-                  </StatusBadge>
-                )}
-              </ActivityHeader>
-              <ActivityDescription>{activity.description}</ActivityDescription>
-              <ActivityTime>
-                <TimeIcon />
-                {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
-              </ActivityTime>
-            </ActivityContent>
-          </ActivityItem>
-        ))}
+        {activities.length === 0 ? (
+          <EmptyStateContainer>
+            <EmptyStateIcon>
+              <Clock size={48} />
+            </EmptyStateIcon>
+            <EmptyStateTitle>No Recent Activity</EmptyStateTitle>
+            <EmptyStateDescription>
+              Your recent activities will appear here once you start using the platform.
+            </EmptyStateDescription>
+          </EmptyStateContainer>
+        ) : (
+          activities
+            .slice(0, showAll ? activities.length : 3)
+            .map((activity) => (
+              <ActivityItem key={activity.id}>
+                <ActivityIcon>
+                  {getActivityIcon(activity.type)}
+                </ActivityIcon>
+                
+                <ActivityContent>
+                  <ActivityHeader>
+                    <ActivityTitleText>
+                      {activity.title}
+                    </ActivityTitleText>
+                    {activity.status && (
+                      <StatusBadge $status={activity.status}>
+                        {activity.status}
+                      </StatusBadge>
+                    )}
+                  </ActivityHeader>
+                  <ActivityDescription>{activity.description}</ActivityDescription>
+                  <ActivityTime>
+                    <TimeIcon />
+                    {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
+                  </ActivityTime>
+                </ActivityContent>
+              </ActivityItem>
+            ))
+        )}
       </ActivityList>
       
-      <ViewAllButton>
-        View all activities
-      </ViewAllButton>
+      {activities.length > 3 && (
+        <ViewAllButton onClick={() => setShowAll(!showAll)}>
+          {showAll ? 'Show Less' : `View all ${activities.length} activities (${activities.length - 3} more)`}
+        </ViewAllButton>
+      )}
     </ActivityContainer>
   );
 };
